@@ -75,7 +75,7 @@ const Room = () => {
             <div>Room</div>
             <h4>you are connected to {remoteEmailId}</h4>
             <button onClick={e => sendStream(myStream)}>Send My Video</button>
-            <ReactPlayer url={myStream} playing muted />
+            <ReactPlayer url={myStream} playing  />
             <ReactPlayer url={remoteStream} playing />
         </>
     )
