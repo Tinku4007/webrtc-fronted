@@ -1,12 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 const PeerContext = createContext(null);
 
-export const usePeer = () => {
-    return useContext(PeerContext);
-};
+export const usePeer = () => useContext(PeerContext);
 
-export const PeerProvider = (props) => {
+export const PeerProvider = ({ children }) => {
+    const [remoteStream, setRemoteStream] = useState(null);
+
     const peer = useMemo(() => new RTCPeerConnection({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -14,15 +14,14 @@ export const PeerProvider = (props) => {
             { urls: 'stun:stun2.l.google.com:19302' },
         ],
     }), []);
-    const [remoteStream, setRemoteStream] = useState(null);
 
     const createOffer = async () => {
         try {
             const offer = await peer.createOffer();
-            await peer.setLocalDescription(offer);
+            await peer.setLocalDescription(new RTCSessionDescription(offer));
             return offer;
         } catch (error) {
-            console.error('Failed to create offer:', error);
+            console.error('Error creating offer:', error);
             throw error;
         }
     };
@@ -31,10 +30,10 @@ export const PeerProvider = (props) => {
         try {
             await peer.setRemoteDescription(new RTCSessionDescription(offer));
             const answer = await peer.createAnswer();
-            await peer.setLocalDescription(answer);
+            await peer.setLocalDescription(new RTCSessionDescription(answer));
             return answer;
         } catch (error) {
-            console.error('Failed to create answer:', error);
+            console.error('Error creating answer:', error);
             throw error;
         }
     };
@@ -43,48 +42,25 @@ export const PeerProvider = (props) => {
         try {
             await peer.setRemoteDescription(new RTCSessionDescription(ans));
         } catch (error) {
-            console.error('Failed to set remote answer:', error);
+            console.error('Error setting remote description:', error);
             throw error;
         }
     };
 
-    const handleTrackEvent = useCallback((ev) => {
-        console.log('Track event received in PeerProvider', ev.streams);
-        if (ev.streams && ev.streams[0]) {
-            setRemoteStream(ev.streams[0]);
+    const sendStream = async (stream) => {
+        const tracks = stream.getTracks();
+        for (const track of tracks) {
+            peer.addTrack(track, stream);
         }
-    }, []);
+    };
 
-    useEffect(() => {
-        peer.addEventListener('track', handleTrackEvent);
-        
-        peer.addEventListener('iceconnectionstatechange', () => {
-            console.log('ICE Connection State:', peer.iceConnectionState);
-        });
-
-        peer.addEventListener('signalingstatechange', () => {
-            console.log('Signaling State:', peer.signalingState);
-        });
-
-        peer.addEventListener('connectionstatechange', () => {
-            console.log('Connection State:', peer.connectionState);
-            if (peer.connectionState === 'failed') {
-                console.log('Connection failed. Attempting to restart ICE');
-                peer.restartIce();
-            }
-        });
-
-        return () => {
-            peer.removeEventListener('track', handleTrackEvent);
-            peer.removeEventListener('iceconnectionstatechange', () => {});
-            peer.removeEventListener('signalingstatechange', () => {});
-            peer.removeEventListener('connectionstatechange', () => {});
-        };
-    }, [handleTrackEvent, peer]);
+    peer.ontrack = (event) => {
+        setRemoteStream(event.streams[0]);
+    };
 
     return (
-        <PeerContext.Provider value={{ peer, createOffer, createAnswer, setRemoteAnswer, remoteStream }}>
-            {props.children}
+        <PeerContext.Provider value={{ peer, createOffer, createAnswer, setRemoteAnswer, sendStream, remoteStream }}>
+            {children}
         </PeerContext.Provider>
     );
 };
