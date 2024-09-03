@@ -49,8 +49,10 @@ export const PeerProvider = (props) => {
     };
 
     const handleTrackEvent = useCallback((ev) => {
-        const streams = ev.streams;
-        setRemoteStream(streams[0]);
+        console.log('Track event received in PeerProvider', ev.streams);
+        if (ev.streams && ev.streams[0]) {
+            setRemoteStream(ev.streams[0]);
+        }
     }, []);
 
     useEffect(() => {
@@ -67,6 +69,7 @@ export const PeerProvider = (props) => {
         peer.addEventListener('connectionstatechange', () => {
             console.log('Connection State:', peer.connectionState);
             if (peer.connectionState === 'failed') {
+                console.log('Connection failed. Attempting to restart ICE');
                 peer.restartIce();
             }
         });

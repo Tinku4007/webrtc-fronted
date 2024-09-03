@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState, useRef } from 'react'
 import { useSocket } from '../src/Providers/Socket'
 import { usePeer } from '../src/Providers/Peer'
 import ReactPlayer from 'react-player'
@@ -9,6 +9,7 @@ const Room = () => {
     const [myStream, setMyStream] = useState(null)
     const [remoteEmailId, setRemoteEmailId] = useState(null)
     const [isConnected, setIsConnected] = useState(false)
+    const remoteVideoRef = useRef(null)
 
     const handleNewUserJoinRoom = useCallback(async (data) => {
         const { emailId } = data
@@ -40,15 +41,19 @@ const Room = () => {
                 audio: true,
             })
             setMyStream(stream)
-            stream.getTracks().forEach(track => peer.addTrack(track, stream))
+            stream.getTracks().forEach(track => {
+                const sender = peer.addTrack(track, stream)
+                console.log('Added local track:', track.kind, sender)
+            })
         } catch (error) {
             console.error('Error accessing media devices:', error)
-            // Implement user-friendly error handling here
+            alert('Failed to access camera and microphone. Please check your permissions.')
         }
     }, [peer])
 
     const handleNegotiation = useCallback(async () => {
         try {
+            console.log('Negotiation needed')
             const offer = await peer.createOffer()
             await peer.setLocalDescription(offer)
             socket.emit('call-user', { emailId: remoteEmailId, offer })
@@ -59,14 +64,27 @@ const Room = () => {
 
     const handleICECandidateEvent = useCallback((event) => {
         if (event.candidate) {
+            console.log('Sending ICE candidate')
             socket.emit("ice-candidate", { candidate: event.candidate, to: remoteEmailId })
         }
     }, [socket, remoteEmailId])
 
     const handleNewICECandidate = useCallback(async (incoming) => {
-        const candidate = new RTCIceCandidate(incoming.candidate)
-        await peer.addIceCandidate(candidate)
+        try {
+            const candidate = new RTCIceCandidate(incoming.candidate)
+            await peer.addIceCandidate(candidate)
+            console.log('Added ICE candidate')
+        } catch (error) {
+            console.error('Error adding ICE candidate:', error)
+        }
     }, [peer])
+
+    const handleTrackEvent = useCallback((event) => {
+        console.log('Received remote track', event.track.kind)
+        if (remoteVideoRef.current && event.streams && event.streams[0]) {
+            remoteVideoRef.current.srcObject = event.streams[0]
+        }
+    }, [])
 
     useEffect(() => {
         socket.on("user-joined", handleNewUserJoinRoom)
@@ -76,6 +94,7 @@ const Room = () => {
 
         peer.addEventListener('negotiationneeded', handleNegotiation)
         peer.addEventListener('icecandidate', handleICECandidateEvent)
+        peer.addEventListener('track', handleTrackEvent)
 
         return () => {
             socket.off('user-joined', handleNewUserJoinRoom)
@@ -85,8 +104,9 @@ const Room = () => {
 
             peer.removeEventListener('negotiationneeded', handleNegotiation)
             peer.removeEventListener('icecandidate', handleICECandidateEvent)
+            peer.removeEventListener('track', handleTrackEvent)
         }
-    }, [handleNewUserJoinRoom, handleIncomingCall, handleCallAccepted, handleNewICECandidate, handleNegotiation, handleICECandidateEvent, socket, peer])
+    }, [handleNewUserJoinRoom, handleIncomingCall, handleCallAccepted, handleNewICECandidate, handleNegotiation, handleICECandidateEvent, handleTrackEvent, socket, peer])
 
     useEffect(() => {
         getUserMediaStream()
@@ -97,8 +117,19 @@ const Room = () => {
             <div>Room</div>
             <h4>You are connected to {remoteEmailId}</h4>
             <h4>Connection status: {isConnected ? 'Connected' : 'Connecting...'}</h4>
-            {myStream && <ReactPlayer url={myStream} playing muted width="300px" height="200px" />}
-            {remoteStream && <ReactPlayer url={remoteStream} playing width="300px" height="200px" />}
+            {myStream && (
+                <div>
+                    <h5>My Video</h5>
+                    <ReactPlayer url={myStream} playing muted width="300px" height="200px" />
+                </div>
+            )}
+            <div>
+                <h5>Remote Video</h5>
+                <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '300px', height: '200px' }} />
+            </div>
+            <button onClick={() => console.log('Remote Stream:', remoteVideoRef.current?.srcObject)}>
+                Log Remote Stream
+            </button>
         </>
     )
 }
