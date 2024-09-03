@@ -34,8 +34,8 @@ const Room = () => {
 
     const getUserMediaStream = useCallback(async () => {
         const mediaFunction = {
-            'video': true,
-            'audio': true,
+            video: true,
+            audio: true,
         }
         const stream = await navigator.mediaDevices.getUserMedia(mediaFunction)
         setMyStream(stream)
@@ -75,7 +75,7 @@ const Room = () => {
             <div>Room</div>
             <h4>you are connected to {remoteEmailId}</h4>
             <button onClick={() => sendStream(myStream)}>Send My Video</button>
-            <ReactPlayer url={myStream} playing  />
+            <ReactPlayer url={myStream} playing muted  />
             <ReactPlayer url={remoteStream} playing />
         </>
     )
