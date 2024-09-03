@@ -9,7 +9,7 @@ export const usePeer = () => {
 export const PeerProvider = (props) => {
     const peer = useMemo(() => new RTCPeerConnection({
         iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' } // Example STUN server
+            { urls: 'stun:stun.l.google.com:19302' }
         ],
     }), []);
     const [remoteStream, setRemoteStream] = useState(null);
@@ -37,21 +37,9 @@ export const PeerProvider = (props) => {
 
     const setRemoteAnswer = async (ans) => {
         try {
-            if (peer.signalingState === 'stable') {
-                console.warn('Peer connection is in stable state. Cannot set remote description.');
-                return;
-            }
-            console.log('Setting remote answer:', ans);
             await peer.setRemoteDescription(new RTCSessionDescription(ans));
         } catch (error) {
             console.error('Failed to set remote answer:', error);
-        }
-    };
-
-    const sendStream = async (stream) => {
-        const tracks = stream.getTracks();
-        for (const track of tracks) {
-            peer.addTrack(track, stream);
         }
     };
 
@@ -62,8 +50,7 @@ export const PeerProvider = (props) => {
 
     useEffect(() => {
         peer.addEventListener('track', handleTrackEvent);
-
-        // Add ICE and signaling state change listeners
+        
         peer.addEventListener('iceconnectionstatechange', () => {
             console.log('ICE Connection State:', peer.iceConnectionState);
         });
@@ -74,17 +61,13 @@ export const PeerProvider = (props) => {
 
         return () => {
             peer.removeEventListener('track', handleTrackEvent);
-            peer.removeEventListener('iceconnectionstatechange', () => {
-                console.log('ICE Connection State:', peer.iceConnectionState);
-            });
-            peer.removeEventListener('signalingstatechange', () => {
-                console.log('Signaling State:', peer.signalingState);
-            });
+            peer.removeEventListener('iceconnectionstatechange', () => {});
+            peer.removeEventListener('signalingstatechange', () => {});
         };
     }, [handleTrackEvent, peer]);
 
     return (
-        <PeerContext.Provider value={{ peer, createOffer, createAnswer, setRemoteAnswer, sendStream, remoteStream }}>
+        <PeerContext.Provider value={{ peer, createOffer, createAnswer, setRemoteAnswer, remoteStream }}>
             {props.children}
         </PeerContext.Provider>
     );
