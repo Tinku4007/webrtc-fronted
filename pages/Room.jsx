@@ -5,9 +5,10 @@ import ReactPlayer from 'react-player'
 
 const Room = () => {
     const socket = useSocket()
-    const { peer, createOffer, createAnswer, setRemoteAnswer, sendStream, remoteStream } = usePeer()
+    const { peer, createOffer, createAnswer, setRemoteAnswer, remoteStream } = usePeer()
     const [myStream, setMyStream] = useState(null)
     const [remoteEmailId, setRemoteEmailId] = useState(null)
+    const [isConnected, setIsConnected] = useState(false)
 
     const handleNewUserJoinRoom = useCallback(async (data) => {
         const { emailId } = data
@@ -29,6 +30,7 @@ const Room = () => {
         const { ans } = data
         console.log('call got accepted', ans)
         await setRemoteAnswer(ans)
+        setIsConnected(true)
     }, [setRemoteAnswer])
 
     const getUserMediaStream = useCallback(async () => {
@@ -41,6 +43,7 @@ const Room = () => {
             stream.getTracks().forEach(track => peer.addTrack(track, stream))
         } catch (error) {
             console.error('Error accessing media devices:', error)
+            // Implement user-friendly error handling here
         }
     }, [peer])
 
@@ -54,23 +57,36 @@ const Room = () => {
         }
     }, [peer, remoteEmailId, socket])
 
+    const handleICECandidateEvent = useCallback((event) => {
+        if (event.candidate) {
+            socket.emit("ice-candidate", { candidate: event.candidate, to: remoteEmailId })
+        }
+    }, [socket, remoteEmailId])
+
+    const handleNewICECandidate = useCallback(async (incoming) => {
+        const candidate = new RTCIceCandidate(incoming.candidate)
+        await peer.addIceCandidate(candidate)
+    }, [peer])
+
     useEffect(() => {
         socket.on("user-joined", handleNewUserJoinRoom)
         socket.on("incomming-call", handleIncomingCall)
         socket.on("call-accepted", handleCallAccepted)
+        socket.on("ice-candidate", handleNewICECandidate)
+
+        peer.addEventListener('negotiationneeded', handleNegotiation)
+        peer.addEventListener('icecandidate', handleICECandidateEvent)
+
         return () => {
             socket.off('user-joined', handleNewUserJoinRoom)
             socket.off('incomming-call', handleIncomingCall)
             socket.off("call-accepted", handleCallAccepted)
-        }
-    }, [handleNewUserJoinRoom, socket, handleIncomingCall, handleCallAccepted])
+            socket.off("ice-candidate", handleNewICECandidate)
 
-    useEffect(() => {
-        peer.addEventListener('negotiationneeded', handleNegotiation)
-        return () => {
             peer.removeEventListener('negotiationneeded', handleNegotiation)
+            peer.removeEventListener('icecandidate', handleICECandidateEvent)
         }
-    }, [peer, handleNegotiation])
+    }, [handleNewUserJoinRoom, handleIncomingCall, handleCallAccepted, handleNewICECandidate, handleNegotiation, handleICECandidateEvent, socket, peer])
 
     useEffect(() => {
         getUserMediaStream()
@@ -80,8 +96,9 @@ const Room = () => {
         <>
             <div>Room</div>
             <h4>You are connected to {remoteEmailId}</h4>
-            <ReactPlayer url={myStream} playing muted />
-            <ReactPlayer url={remoteStream} playing />
+            <h4>Connection status: {isConnected ? 'Connected' : 'Connecting...'}</h4>
+            {myStream && <ReactPlayer url={myStream} playing muted width="300px" height="200px" />}
+            {remoteStream && <ReactPlayer url={remoteStream} playing width="300px" height="200px" />}
         </>
     )
 }

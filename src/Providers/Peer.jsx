@@ -9,7 +9,9 @@ export const usePeer = () => {
 export const PeerProvider = (props) => {
     const peer = useMemo(() => new RTCPeerConnection({
         iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' }
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
         ],
     }), []);
     const [remoteStream, setRemoteStream] = useState(null);
@@ -21,6 +23,7 @@ export const PeerProvider = (props) => {
             return offer;
         } catch (error) {
             console.error('Failed to create offer:', error);
+            throw error;
         }
     };
 
@@ -32,6 +35,7 @@ export const PeerProvider = (props) => {
             return answer;
         } catch (error) {
             console.error('Failed to create answer:', error);
+            throw error;
         }
     };
 
@@ -40,6 +44,7 @@ export const PeerProvider = (props) => {
             await peer.setRemoteDescription(new RTCSessionDescription(ans));
         } catch (error) {
             console.error('Failed to set remote answer:', error);
+            throw error;
         }
     };
 
@@ -59,10 +64,18 @@ export const PeerProvider = (props) => {
             console.log('Signaling State:', peer.signalingState);
         });
 
+        peer.addEventListener('connectionstatechange', () => {
+            console.log('Connection State:', peer.connectionState);
+            if (peer.connectionState === 'failed') {
+                peer.restartIce();
+            }
+        });
+
         return () => {
             peer.removeEventListener('track', handleTrackEvent);
             peer.removeEventListener('iceconnectionstatechange', () => {});
             peer.removeEventListener('signalingstatechange', () => {});
+            peer.removeEventListener('connectionstatechange', () => {});
         };
     }, [handleTrackEvent, peer]);
 
