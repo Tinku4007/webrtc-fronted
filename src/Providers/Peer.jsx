@@ -7,7 +7,11 @@ export const usePeer = () => {
 };
 
 export const PeerProvider = (props) => {
-    const peer = useMemo(() => new RTCPeerConnection(), []);
+    const peer = useMemo(() => new RTCPeerConnection({
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' } // Example STUN server
+        ],
+    }), []);
     const [remoteStream, setRemoteStream] = useState(null);
 
     const createOffer = async () => {
@@ -58,12 +62,12 @@ export const PeerProvider = (props) => {
 
     useEffect(() => {
         peer.addEventListener('track', handleTrackEvent);
-        
+
         // Add ICE and signaling state change listeners
         peer.addEventListener('iceconnectionstatechange', () => {
             console.log('ICE Connection State:', peer.iceConnectionState);
         });
-        
+
         peer.addEventListener('signalingstatechange', () => {
             console.log('Signaling State:', peer.signalingState);
         });
