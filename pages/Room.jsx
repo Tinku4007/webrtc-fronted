@@ -83,6 +83,26 @@ const Room = () => {
         }
     }, [socket, peer, handleNewUserJoinRoom, handleIncomingCall, handleCallAccepted, handleIceCandidate, handleTrackEvent])
 
+
+    useEffect(() => {
+        const handleIceConnectionStateChange = () => {
+            const state = peer.iceConnectionState;
+            console.log('ICE connection state changed:', state);
+            if (state === 'connected' || state === 'completed') {
+                setIsConnected(true);
+            } else {
+                setIsConnected(false);
+            }
+        };
+    
+        peer.addEventListener('iceconnectionstatechange', handleIceConnectionStateChange);
+    
+        return () => {
+            peer.removeEventListener('iceconnectionstatechange', handleIceConnectionStateChange);
+        };
+    }, [peer]);
+    
+
     useEffect(() => {
         socket.on("ice-candidate", async (data) => {
             try {
