@@ -55,7 +55,7 @@ const Room = () => {
         return () => {
             socket.off('user-joined', handleNewUserJoinRoom)
             socket.off('incomming-call', handleIncomingCall)
-            socket.on("call-accepted", handleCallAccepted)
+            socket.off("call-accepted", handleCallAccepted)
         }
     }, [handleNewUserJoinRoom , socket , handleIncomingCall , handleNewUserJoinRoom])
 
@@ -74,7 +74,7 @@ const Room = () => {
         <>
             <div>Room</div>
             <h4>you are connected to {remoteEmailId}</h4>
-            <button onClick={e => sendStream(myStream)}>Send My Video</button>
+            <button onClick={() => sendStream(myStream)}>Send My Video</button>
             <ReactPlayer url={myStream} playing  />
             <ReactPlayer url={remoteStream} playing />
         </>
