@@ -1,8 +1,8 @@
 // src/App.js
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useSocket } from '../src/Providers/Socket';
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../Providers/Socket';
 
 
 function HomePage() {

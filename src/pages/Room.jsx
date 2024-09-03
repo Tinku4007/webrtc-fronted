@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { useSocket } from '../src/Providers/Socket';
-import { usePeer } from '../src/Providers/Peer';
+import { useSocket } from '../Providers/Socket';
+import { usePeer } from '../Providers/Peer';
 
 const Room = () => {
     const socket = useSocket();

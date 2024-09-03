@@ -1,10 +1,10 @@
 import { useContext, useState } from 'react'
 import './App.css'
-import HomePage from '../pages/HomePage'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { SocketProvider } from './Providers/Socket'
-import Room from '../pages/Room'
 import { PeerProvider } from './Providers/Peer'
+import HomePage from './pages/HomePage'
+import Room from './pages/Room'
 
 function App() {
   return (
